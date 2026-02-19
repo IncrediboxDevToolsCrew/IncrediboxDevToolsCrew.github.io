@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         No More Slop
 // @namespace    https://github.com/Gen1xLol/no-more-slop-for-penguinmod
-// @version      1.0.0
+// @version      1.0.1
 // @description  Adds a "Recent Non-Slop Projects" category to PenguinMod's main page, which filters out common keywords associated with low effort ("slop") projects.
 // @author       Gen1x
 // @match        https://penguinmod.com/
@@ -13,20 +13,24 @@
 (function () {
   'use strict';
 
+  const VER = "1.0.1";
   const FRONTPAGE = 'https://projects.penguinmod.com/api/v1/projects/frontpage';
-  const SLOPBLOCK = 'https://raw.githubusercontent.com/Gen1xLol/no-more-slop-for-penguinmod/refs/heads/main/slopblock.txt';
+  const SLOPBLOCK = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/slopblock.txt';
+  const VERSION_URL = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/version.txt';
+  const UPDATE_URL = 'https://raw.githubusercontent.com/Gen1xLol/no-more-slop-for-penguinmod/refs/heads/main/No%20More%20Slop.user.js';
   const KEY_DISABLED = 'nms_disabled_keywords';
   const KEY_CUSTOM   = 'nms_custom_keywords';
   const KEY_SHIPS    = 'nms_filter_ships';
 
   const IC = {
-    chart:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
-    check:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;color:#4ade80;"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    filter: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;color:#f87171;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>`,
-    tag:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`,
-    ship:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>`,
-    both:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>`,
-    bullet: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px;opacity:0.5;"><circle cx="12" cy="12" r="6"></circle></svg>`
+    chart:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
+    check:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;color:#4ade80;"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    filter:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;color:#f87171;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>`,
+    tag:     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`,
+    ship:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>`,
+    both:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;opacity:0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>`,
+    bullet:  `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px;opacity:0.5;"><circle cx="12" cy="12" r="6"></circle></svg>`,
+    warning: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
   };
 
   let fpPromise = null;
@@ -231,6 +235,11 @@
       .nms-tag-stat-item:last-child { border-bottom:none; }
       .nms-tag-name { font-weight:500; }
       .nms-tag-count { font-weight:700; opacity:0.8; }
+      #nms-update-link {
+        display:inline-flex; align-items:center; color:#f5a623; font-size:0.85rem;
+        font-weight:700; text-decoration:none; margin-left:10px;
+      }
+      #nms-update-link:hover { text-decoration:underline; }
     `;
     (document.head || document.documentElement).appendChild(s);
   }
@@ -438,6 +447,41 @@
     }
   }
 
+  function injectUpdateLink() {
+    const titleP = document.querySelector('#nms-injected .header.svelte-89pxgo p:first-child');
+    if (!titleP || document.getElementById('nms-update-link')) return;
+    const link = document.createElement('a');
+    link.id = 'nms-update-link';
+    link.href = UPDATE_URL;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.innerHTML = `${IC.warning}Update Script`;
+    titleP.appendChild(link);
+  }
+
+  let updateAvailable = false;
+
+  function injectUpdateLinkIfNeeded() {
+    if (updateAvailable) injectUpdateLink();
+  }
+
+  async function checkVersion() {
+    try {
+      const remote = (await fetch(VERSION_URL).then(r => r.text())).trim();
+      if (remote !== VER) {
+        updateAvailable = true;
+        const tryInject = () => {
+          if (document.getElementById('nms-injected')) {
+            injectUpdateLink();
+          } else {
+            setTimeout(tryInject, 100);
+          }
+        };
+        tryInject();
+      }
+    } catch (_) {}
+  }
+
   function buildCard(p) {
     const pUrl  = `https://studio.penguinmod.com/#${p.id}`;
     const aUrl  = `/profile?user=${p.author.username}`;
@@ -505,6 +549,7 @@
     section.appendChild(hdr);
     section.appendChild(statsPanel);
     section.appendChild(wrap);
+    setTimeout(injectUpdateLinkIfNeeded, 0);
     return section;
   }
 
@@ -577,6 +622,7 @@
   async function main() {
     injectCSS();
     watchForContainer();
+    checkVersion();
 
     let fpData, slopRaw;
     try {
