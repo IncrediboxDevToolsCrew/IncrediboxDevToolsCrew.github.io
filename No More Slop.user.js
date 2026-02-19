@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         No More Slop
 // @namespace    https://github.com/Gen1xLol/no-more-slop-for-penguinmod
-// @version      1.0.2
+// @version      1.0.3
 // @description  Adds a "Recent Non-Slop Projects" category to PenguinMod's main page, which filters out common keywords associated with low effort ("slop") projects.
 // @author       Gen1x
 // @match        https://penguinmod.com/
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const VER = "1.0.2";
+  const VER = "1.0.3";
   const FRONTPAGE = 'https://projects.penguinmod.com/api/v1/projects/frontpage';
   const SLOPBLOCK = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/slopblock.txt';
   const VERSION_URL = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/version.txt';
-  const UPDATE_URL = 'https://raw.githubusercontent.com/Gen1xLol/no-more-slop-for-penguinmod/refs/heads/main/No%20More%20Slop.user.js';
+  const UPDATE_URL = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/No%20More%20Slop.user.js';
   const KEY_DISABLED = 'nms_disabled_keywords';
   const KEY_CUSTOM   = 'nms_custom_keywords';
   const KEY_SHIPS    = 'nms_filter_ships';
@@ -499,7 +499,7 @@
     if (!titleP || document.getElementById('nms-update-link')) return;
     const link = document.createElement('a');
     link.id = 'nms-update-link';
-    link.href = UPDATE_URL;
+    link.href = UPDATE_URL + '?_=' + Math.random();
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.innerHTML = `${IC.warning}Update Script`;
@@ -514,7 +514,7 @@
 
   async function checkVersion() {
     try {
-      const remote = (await fetch(VERSION_URL).then(r => r.text())).trim();
+      const remote = (await fetch(VERSION_URL + '?_=' + Math.random()).then(r => r.text())).trim();
       if (remote !== VER) {
         updateAvailable = true;
         const tryInject = () => {
@@ -680,14 +680,14 @@
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
       [fpData, slopRaw] = await Promise.all([
         Promise.race([waitFP.then(p => p), timeout]),
-        fetch(SLOPBLOCK).then(r => r.text()),
+        fetch(SLOPBLOCK + '?_=' + Math.random()).then(r => r.text()),
       ]);
     } catch (err) {
       console.warn('[No More Slop] falling back to direct fetch:', err.message);
       try {
         [fpData, slopRaw] = await Promise.all([
           fetch(FRONTPAGE).then(r => r.json()),
-          fetch(SLOPBLOCK).then(r => r.text()),
+          fetch(SLOPBLOCK + '?_=' + Math.random()).then(r => r.text()),
         ]);
       } catch (err2) {
         console.error('[No More Slop] fetch failed:', err2);
