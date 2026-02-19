@@ -1,5 +1,3 @@
-# No More Slop for PenguinMod
-
 A userscript that adds a **"Recent Non-Slop Projects"** section to the PenguinMod homepage. It filters out low-effort projects based on a keyword blocklist, so you can actually find stuff worth playing.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
