@@ -26,7 +26,7 @@ You'll need a userscript manager. [Violentmonkey](https://violentmonkey.github.i
 
 Install Violentmonkey (or Tampermonkey) for your browser, then click the link below to install the script:
 
-**[Install No More Slop](https://raw.githubusercontent.com/Gen1xLol/no-more-slop-for-penguinmod/refs/heads/main/No%20More%20Slop.user.js)**
+**[Install No More Slop](./No%20More%20Slop.user.js)**
 
 After that, go to [penguinmod.com](https://penguinmod.com) and the new section should appear on the homepage.
 
