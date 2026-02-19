@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         No More Slop
 // @namespace    https://github.com/Gen1xLol/no-more-slop-for-penguinmod
-// @version      1.0.1
+// @version      1.0.2
 // @description  Adds a "Recent Non-Slop Projects" category to PenguinMod's main page, which filters out common keywords associated with low effort ("slop") projects.
 // @author       Gen1x
 // @match        https://penguinmod.com/
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const VER = "1.0.1";
+  const VER = "1.0.2";
   const FRONTPAGE = 'https://projects.penguinmod.com/api/v1/projects/frontpage';
   const SLOPBLOCK = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/slopblock.txt';
   const VERSION_URL = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/version.txt';
@@ -21,6 +21,7 @@
   const KEY_DISABLED = 'nms_disabled_keywords';
   const KEY_CUSTOM   = 'nms_custom_keywords';
   const KEY_SHIPS    = 'nms_filter_ships';
+  const KEY_EMPTY    = 'nms_filter_empty';
 
   const IC = {
     chart:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
@@ -51,11 +52,19 @@
   const setCustom   = a => localStorage.setItem(KEY_CUSTOM, JSON.stringify(a));
   const getShips    = () => { const v = localStorage.getItem(KEY_SHIPS); return v === null ? true : v === 'true'; };
   const setShips    = b => localStorage.setItem(KEY_SHIPS, String(b));
+  const getEmpty    = () => { const v = localStorage.getItem(KEY_EMPTY); return v === null ? true : v === 'true'; };
+  const setEmpty    = b => localStorage.setItem(KEY_EMPTY, String(b));
 
   const SHIP_RE = /\b\w[\w\s]*\s+[xX×]\s+\w[\w\s]*\b/;
 
   function isShip(p) {
     return SHIP_RE.test([p.title, p.instructions, p.notes].filter(Boolean).join(' '));
+  }
+
+  function isEmpty(p) {
+    const noInstructions = p.instructions === '' || p.instructions == null;
+    const noNotes = p.notes === '' || p.notes == null;
+    return noInstructions || noNotes;
   }
 
   function parseKws(raw) {
@@ -78,27 +87,38 @@
   }
 
   function computeStats(projects, base) {
-    const kws   = activeKws(base);
+    const kws    = activeKws(base);
     const ships  = getShips();
-    let byTag = 0, byShip = 0, byBoth = 0, shown = 0;
+    const empty  = getEmpty();
+    let byTag = 0, byShip = 0, byBoth = 0, byEmpty = 0, shown = 0;
     const tagCounts = {};
 
     for (const p of projects) {
-      const matches = slopMatches(p, kws);
-      const slop = matches.length > 0;
-      const ship = ships && isShip(p);
+      const matches   = slopMatches(p, kws);
+      const slopHit   = matches.length > 0;
+      const shipHit   = ships && isShip(p);
+      const emptyHit  = empty && isEmpty(p);
       matches.forEach(m => { tagCounts[m] = (tagCounts[m] || 0) + 1; });
-      if (slop && ship)    byBoth++;
-      else if (slop)       byTag++;
-      else if (ship)       byShip++;
-      else                 shown++;
+
+      if (emptyHit && !slopHit && !shipHit) {
+        byEmpty++;
+      } else if (slopHit && shipHit) {
+        byBoth++;
+      } else if (slopHit) {
+        byTag++;
+      } else if (shipHit) {
+        byShip++;
+      } else {
+        shown++;
+      }
     }
 
     return {
       total: projects.length,
-      totalFiltered: byTag + byShip + byBoth,
-      shown, byTag, byShip, byBoth,
+      totalFiltered: byTag + byShip + byBoth + byEmpty,
+      shown, byTag, byShip, byBoth, byEmpty,
       shipsOn: ships,
+      emptyOn: empty,
       sortedTags: Object.entries(tagCounts).sort((a, b) => b[1] - a[1])
     };
   }
@@ -129,6 +149,7 @@
             <div style="display:flex;align-items:center;padding-left:14px;opacity:0.8;">${IC.tag} By keyword</div><div><strong>${s.byTag}</strong></div>
             <div style="display:flex;align-items:center;padding-left:14px;opacity:0.8;">${IC.ship} By ship</div><div><strong>${s.byShip}</strong>${!s.shipsOn ? ' <em style="opacity:0.5;font-size:0.7em">(off)</em>' : ''}</div>
             <div style="display:flex;align-items:center;padding-left:14px;opacity:0.8;">${IC.both} By both</div><div><strong>${s.byBoth}</strong></div>
+            <div style="display:flex;align-items:center;padding-left:14px;opacity:0.8;">${IC.filter} By empty fields</div><div><strong>${s.byEmpty}</strong>${!s.emptyOn ? ' <em style="opacity:0.5;font-size:0.7em">(off)</em>' : ''}</div>
           </div>
           <div style="border-top:1px solid rgba(127,127,127,0.2);padding-top:8px;">
             <div style="font-weight:600;margin-bottom:6px;font-size:0.75rem;text-transform:uppercase;opacity:0.7;letter-spacing:0.05em;">Keyword Hit Counts</div>
@@ -246,6 +267,31 @@
 
   let baseKws = [];
 
+  function makeToggleRow(id, checked, onChange, labelText, descText) {
+    const row = document.createElement('div');
+    row.className = 'nms-toggle-row';
+
+    const lbl = document.createElement('label');
+    lbl.className = 'nms-toggle-label';
+    lbl.htmlFor = id;
+    lbl.innerHTML = `${labelText} <small>${descText}</small>`;
+
+    const sw = document.createElement('label');
+    sw.className = 'nms-switch';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = id;
+    cb.checked = checked;
+    cb.onchange = () => onChange(cb.checked);
+    const slider = document.createElement('span');
+    slider.className = 'nms-slider';
+    sw.appendChild(cb);
+    sw.appendChild(slider);
+    row.appendChild(lbl);
+    row.appendChild(sw);
+    return row;
+  }
+
   function openModal() {
     if (document.getElementById('nms-modal-overlay')) return;
 
@@ -282,28 +328,21 @@
       specialLabel.textContent = 'Special Filters';
       body.appendChild(specialLabel);
 
-      const row = document.createElement('div');
-      row.className = 'nms-toggle-row';
+      body.appendChild(makeToggleRow(
+        'nms-ship-toggle',
+        getShips(),
+        b => setShips(b),
+        'Filter ships',
+        'Hides projects containing "Character X Character" style pairings in title, instructions, or notes.'
+      ));
 
-      const lbl = document.createElement('label');
-      lbl.className = 'nms-toggle-label';
-      lbl.htmlFor = 'nms-ship-toggle';
-      lbl.innerHTML = `Filter ships <small>Hides projects containing "Character X Character" style pairings in title, instructions, or notes.</small>`;
-
-      const sw = document.createElement('label');
-      sw.className = 'nms-switch';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.id = 'nms-ship-toggle';
-      cb.checked = getShips();
-      cb.onchange = () => setShips(cb.checked);
-      const slider = document.createElement('span');
-      slider.className = 'nms-slider';
-      sw.appendChild(cb);
-      sw.appendChild(slider);
-      row.appendChild(lbl);
-      row.appendChild(sw);
-      body.appendChild(row);
+      body.appendChild(makeToggleRow(
+        'nms-empty-toggle',
+        getEmpty(),
+        b => setEmpty(b),
+        'Filter empty descriptions',
+        'Hides projects that are missing instructions, notes & credits, or both.'
+      ));
 
       const hr0 = document.createElement('hr');
       hr0.className = 'nms-hr';
@@ -424,6 +463,13 @@
     modal.appendChild(footer);
     overlay.appendChild(modal);
     overlay.onclick = e => { if (e.target === overlay) closeModal(); };
+    overlay.addEventListener('wheel', e => {
+      const body = document.getElementById('nms-modal-body');
+      if (body) {
+        body.scrollTop += e.deltaY;
+      }
+      e.preventDefault();
+    }, { passive: false });
     document.addEventListener('keydown', onEsc);
     document.body.appendChild(overlay);
   }
@@ -439,9 +485,10 @@
     filtered = null;
     setList(null);
     if (allProjects.length) {
-      const kws = activeKws(baseKws);
+      const kws   = activeKws(baseKws);
       const ships = getShips();
-      filtered = allProjects.filter(p => !isSlop(p, kws) && !(ships && isShip(p)));
+      const empty = getEmpty();
+      filtered = allProjects.filter(p => !isSlop(p, kws) && !(ships && isShip(p)) && !(empty && isEmpty(p)));
       setList(filtered);
       refreshStats();
     }
@@ -658,9 +705,10 @@
     }
     allProjects.sort((a, b) => b.date - a.date);
 
-    const kws = activeKws(baseKws);
+    const kws   = activeKws(baseKws);
     const ships = getShips();
-    filtered = allProjects.filter(p => !isSlop(p, kws) && !(ships && isShip(p)));
+    const empty = getEmpty();
+    filtered = allProjects.filter(p => !isSlop(p, kws) && !(ships && isShip(p)) && !(empty && isEmpty(p)));
     setList(filtered);
     refreshStats();
   }
