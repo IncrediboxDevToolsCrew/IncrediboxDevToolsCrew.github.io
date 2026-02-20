@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const VER = "1.0.3";
+  const VER = "1.0.4";
   const FRONTPAGE = 'https://projects.penguinmod.com/api/v1/projects/frontpage';
   const SLOPBLOCK = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/slopblock.txt';
   const VERSION_URL = 'https://gen1xlol.github.io/no-more-slop-for-penguinmod/version.txt';
@@ -267,6 +267,34 @@
 
   let baseKws = [];
 
+  function getPageClasses() {
+    const sectionEl    = document.querySelector('[class*="section-projects"] > [class*="section"]');
+    const headerEl     = sectionEl?.querySelector('[class*="header"]');
+    const containerEl  = sectionEl?.querySelector('[class*="container"]');
+    const projectListEl = containerEl?.querySelector('[class*="project-list"]');
+    const projectEl    = projectListEl?.querySelector('[class*="project"]');
+    const projectImageEl  = projectEl?.querySelector('a[class*="project-image"]');
+    const projectAuthorEl = projectEl?.querySelector('a[class*="project-author"]');
+    const projectMetaEl   = projectEl?.querySelector('[class*="project-meta"]');
+    const projectTitleEl  = projectMetaEl?.querySelector('a[class*="project-title"]');
+    const projectDateEl   = projectMetaEl?.querySelector('a[class*="date"]');
+    const headerLinkEl    = headerEl?.querySelector('a');
+
+    return {
+      section:       sectionEl?.className       ?? 'section',
+      header:        headerEl?.className         ?? 'header',
+      container:     containerEl?.className      ?? 'container',
+      projectList:   projectListEl?.className    ?? 'project-list',
+      project:       projectEl?.className        ?? 'project',
+      projectImage:  projectImageEl?.className   ?? 'project-image',
+      projectAuthor: projectAuthorEl?.className  ?? 'project-author',
+      projectMeta:   projectMetaEl?.className    ?? 'project-meta',
+      projectTitle:  projectTitleEl?.className   ?? 'text project-title',
+      projectDate:   projectDateEl?.className    ?? 'text author date',
+      headerLink:    headerLinkEl?.className     ?? '',
+    };
+  }
+
   function makeToggleRow(id, checked, onChange, labelText, descText) {
     const row = document.createElement('div');
     row.className = 'nms-toggle-row';
@@ -320,7 +348,7 @@
 
       const intro = document.createElement('p');
       intro.className = 'nms-normal-case';
-      intro.innerHTML = `<small>This script fetches a list of default keywords. If you don't agree with one of them, you can toggle it. Also, if I missed a tag, make sure to <a href="https://github.com/Gen1xLol/no-more-slop-for-penguinmod" target="_blank" class="svelte-89pxgo" rel="noopener noreferrer">PR the GitHub repo</a>!</small>`;
+      intro.innerHTML = `<small>This script fetches a list of default keywords. If you don't agree with one of them, you can toggle it. Also, if I missed a tag, make sure to <a href="https://github.com/Gen1xLol/no-more-slop-for-penguinmod" target="_blank" rel="noopener noreferrer">PR the GitHub repo</a>!</small>`;
       body.appendChild(intro);
 
       const specialLabel = document.createElement('div');
@@ -495,7 +523,7 @@
   }
 
   function injectUpdateLink() {
-    const titleP = document.querySelector('#nms-injected .header.svelte-89pxgo p:first-child');
+    const titleP = document.querySelector('#nms-injected .nms-section-header-title');
     if (!titleP || document.getElementById('nms-update-link')) return;
     const link = document.createElement('a');
     link.id = 'nms-update-link';
@@ -530,38 +558,42 @@
   }
 
   function buildCard(p) {
-    const pUrl  = `https://studio.penguinmod.com/#${p.id}`;
-    const aUrl  = `/profile?user=${p.author.username}`;
-    const thumb = `https://projects.penguinmod.com/api/v1/projects/getproject?projectID=${p.id}&requestType=thumbnail`;
-    const pfp   = `https://projects.penguinmod.com/api/v1/users/getpfp?username=${p.author.username}`;
+    const cls    = getPageClasses();
+    const pUrl   = `https://studio.penguinmod.com/#${p.id}`;
+    const aUrl   = `/profile?user=${p.author.username}`;
+    const thumb  = `https://projects.penguinmod.com/api/v1/projects/getproject?projectID=${p.id}&requestType=thumbnail`;
+    const pfp    = `https://projects.penguinmod.com/api/v1/users/getpfp?username=${p.author.username}`;
 
     const card = document.createElement('div');
     card.setAttribute('data-featured', p.featured ? 'true' : 'false');
-    card.className = 'project svelte-1xvaxv4';
+    card.className = cls.project;
     card.innerHTML = `
-      <a href="${pUrl}" target="_self" class="project-image svelte-1xvaxv4">
-        <img src="${thumb}" alt="Project Thumbnail" class="project-image svelte-1xvaxv4">
+      <a href="${pUrl}" target="_self" class="${cls.projectImage}">
+        <img src="${thumb}" alt="Project Thumbnail" class="${cls.projectImage}">
       </a>
-      <a href="${aUrl}" target="_self" class="project-author svelte-1xvaxv4">
-        <img src="${pfp}" alt="Project Author" class="project-author svelte-1xvaxv4">
+      <a href="${aUrl}" target="_self" class="${cls.projectAuthor}">
+        <img src="${pfp}" alt="Project Author" class="${cls.projectAuthor}">
       </a>
-      <div class="project-meta svelte-1xvaxv4">
-        <a href="${pUrl}" target="_self" class="text project-title svelte-1xvaxv4" title="${p.title ?? ''}">${p.title ?? '(untitled)'}</a>
-        <a href="${pUrl}" target="_self" class="text author date svelte-1xvaxv4">${fmtDate(p.date)}</a>
+      <div class="${cls.projectMeta}">
+        <a href="${pUrl}" target="_self" class="${cls.projectTitle}" title="${esc(p.title ?? '')}">${esc(p.title ?? '(untitled)')}</a>
+        <a href="${pUrl}" target="_self" class="${cls.projectDate}">${fmtDate(p.date)}</a>
       </div>`;
     return card;
   }
 
   function buildSection(initial) {
+    const cls = getPageClasses();
+
     const section = document.createElement('div');
-    section.className = 'section svelte-89pxgo';
+    section.className = cls.section;
     section.style.width = '65%';
     section.id = 'nms-injected';
 
     const hdr = document.createElement('div');
-    hdr.className = 'header svelte-89pxgo';
+    hdr.className = cls.header;
 
     const title = document.createElement('p');
+    title.className = 'nms-section-header-title';
     title.style.cssText = 'margin-block:6px;';
     title.innerHTML = '<b>Recent Non-Slop Projects</b>';
 
@@ -569,7 +601,7 @@
     prefP.style.cssText = 'margin-block:6px;';
     const prefLink = document.createElement('a');
     prefLink.href = '#';
-    prefLink.className = 'svelte-89pxgo';
+    prefLink.className = cls.headerLink;
     prefLink.textContent = 'Preferences';
     prefLink.onclick = e => { e.preventDefault(); openModal(); };
     prefP.appendChild(prefLink);
@@ -584,12 +616,12 @@
     }
 
     const wrap = document.createElement('div');
-    wrap.className = 'container svelte-89pxgo';
+    wrap.className = cls.container;
     wrap.style.cssText = 'height:244px;overflow-x:auto;overflow-y:hidden;';
 
     const list = document.createElement('div');
     list.id = 'nms-list';
-    list.className = 'project-list svelte-zlorb7';
+    list.className = cls.projectList;
     setListContent(list, initial);
 
     wrap.appendChild(list);
