@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         No More Slop
 // @namespace    https://github.com/Gen1xLol/no-more-slop-for-penguinmod
-// @version      1.0.3
+// @version      1.0.4
 // @description  Adds a "Recent Non-Slop Projects" category to PenguinMod's main page, which filters out common keywords associated with low effort ("slop") projects.
 // @author       Gen1x
 // @match        https://penguinmod.com/
